@@ -22,6 +22,7 @@ from custom_components.monoprice.select import MatrixOutput
 from custom_components.monoprice.button import MatrixPower
 from homeassistant.exceptions import HomeAssistantError
 from custom_components.monoprice.binary_sensor import MatrixPowerStatus
+from custom_components.monoprice.coordinator import MatrixCoordinator
 
 
 async def main():
@@ -30,8 +31,16 @@ async def main():
         for i, code in enumerate(("00", "01", "02", "03", "11", "12", "13", "14"))
     )
     assert parse_routes(payload + "@T 05 00 00 !") == {i: i for i in range(1, 9)}
-    assert parse_status("none\r\n") == {"power": False, "routes": {}}
-    assert parse_status(payload)["power"] is True
+    assert parse_status("none\r\n") == {"power": None, "routes": {}}
+    assert parse_status(payload)["power"] is None
+    delta_coordinator = SimpleNamespace(
+        client=SimpleNamespace(status=AsyncMock(return_value=parse_status("none"))),
+        data={"power": None, "routes": {i: i for i in range(1, 9)}},
+    )
+    assert (
+        await MatrixCoordinator._async_update_data(delta_coordinator)
+        == delta_coordinator.data
+    )
     for bad in (
         "",
         "<html>error</html>",
@@ -78,7 +87,7 @@ async def main():
     )
     client = MatrixClient(session, "example.invalid", 80)
     assert await client.status() == {
-        "power": True,
+        "power": None,
         "routes": {i: i for i in range(1, 9)},
     }
     assert str(session.get.call_args.args[0]).endswith("/all_dat.get")
@@ -116,10 +125,12 @@ async def main():
     assert not entity.available
     client.coordinator.last_update_success = True
     power = MatrixPowerStatus(entry)
-    assert power.is_on is True
+    assert (
+        power.is_on is True
+    )  # Mocked explicit state only; firmware parser never infers this.
     assert power.device_info["identifiers"] == entity.device_info["identifiers"]
     client.coordinator.data = parse_status("none")
-    assert power.is_on is False and power.available and not entity.available
+    assert power.is_on is None and power.available and entity.current_option is None
     client.coordinator.last_update_success = False
     assert not power.available  # A failed request must not masquerade as powered off.
     client.coordinator.last_update_success = True

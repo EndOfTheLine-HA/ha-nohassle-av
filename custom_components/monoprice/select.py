@@ -38,10 +38,6 @@ class MatrixOutput(CoordinatorEntity, SelectEntity):
         source = (self.coordinator.data or {}).get("routes", {}).get(self.output)
         return self.options[source - 1] if source is not None else None
 
-    @property
-    def available(self):
-        return super().available and bool((self.coordinator.data or {}).get("power"))
-
     async def async_select_option(self, option):
         if option not in self.options:
             raise HomeAssistantError("Unknown matrix input")

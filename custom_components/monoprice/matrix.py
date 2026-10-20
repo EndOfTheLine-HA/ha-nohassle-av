@@ -30,11 +30,10 @@ def parse_routes(payload: str) -> dict[int, int]:
 
 
 def parse_status(payload: str) -> dict:
-    # Verified against the front panel of the supported firmware in both states.
-    # A timeout, empty body or malformed response must never mean "off".
+    # "none" also occurs while the front panel is ON: it is not power feedback.
     if payload.strip() == "none":
-        return {"power": False, "routes": {}}
-    return {"power": True, "routes": parse_routes(payload)}
+        return {"power": None, "routes": {}}
+    return {"power": None, "routes": parse_routes(payload)}
 
 
 def normalize_host(host: str) -> str:

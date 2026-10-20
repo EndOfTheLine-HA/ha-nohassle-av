@@ -20,6 +20,10 @@ class MatrixCoordinator(DataUpdateCoordinator):
 
     async def _async_update_data(self):
         try:
-            return await self.client.status()
+            status = await self.client.status()
+            # The firmware can return "none" between routing reports.
+            if not status["routes"] and self.data:
+                status["routes"] = self.data.get("routes", {})
+            return status
         except (ClientError, OSError, TimeoutError, ValueError) as err:
             raise UpdateFailed("Cannot read matrix routing status") from err

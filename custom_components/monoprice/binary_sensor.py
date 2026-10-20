@@ -1,4 +1,4 @@
-"""Matrix power from its verified standby/route status responses."""
+"""Reserved power entity; actual power feedback has not been established."""
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
