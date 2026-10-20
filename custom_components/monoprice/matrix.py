@@ -29,6 +29,14 @@ def parse_routes(payload: str) -> dict[int, int]:
     return routes
 
 
+def parse_status(payload: str) -> dict:
+    # Verified against the front panel of the supported firmware in both states.
+    # A timeout, empty body or malformed response must never mean "off".
+    if payload.strip() == "none":
+        return {"power": False, "routes": {}}
+    return {"power": True, "routes": parse_routes(payload)}
+
+
 def normalize_host(host: str) -> str:
     host = host.strip().lower()
     try:
@@ -80,7 +88,7 @@ class MatrixClient:
                 ) as response:
                     if response.status != 200:
                         raise OSError(f"Matrix status returned HTTP {response.status}")
-                    return parse_routes(await response.text())
+                    return parse_status(await response.text())
 
     async def _send(self, command: bytes):
         async with self.lock:

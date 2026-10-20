@@ -24,7 +24,7 @@
       },
       "matrix": {
         "title": "Connect your HDMI matrix",
-        "description": "For compatible 8×8 models using HTTP video.set and all_dat.get. Setup does not switch outputs. Current routes are read from the device every 15 seconds. Actual power feedback is not available on the tested firmware.",
+        "description": "For compatible 8×8 models using HTTP video.set and all_dat.get. Setup does not switch outputs. Routes and power are read from the device every 15 seconds. Standby feedback is supported on the tested firmware.",
         "data": {
           "host": "IP address or hostname",
           "http_port": "HTTP port",

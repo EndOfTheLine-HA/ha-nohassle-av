@@ -12,8 +12,7 @@ from custom_components.monoprice.matrix import MatrixClient
 
 async def main():
     async with ClientSession() as session:
-        routes = await MatrixClient(session, sys.argv[1], 80).status()
-        print({"device_reported_routes": routes, "power_status": "not reported"})
+        print(await MatrixClient(session, sys.argv[1], 80).status())
 
 
 asyncio.run(main())

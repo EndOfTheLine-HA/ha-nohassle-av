@@ -19,9 +19,10 @@ Matrix selection reads **device-reported routing** from `/all_dat.get` every
 the selectors unavailable rather than showing an old command as current feedback.
 Power buttons send explicit commands without assuming the
 current power state. This version does not expose reboot or factory reset.
-The tested firmware does not include a power flag in its status response, so actual
-power-state monitoring is not yet supported. Network reachability is not treated
-as proof that the matrix is on.
+The **Power** sensor uses the tested firmware's standby response (`none`) versus
+its valid active routing response, verified against the unit's front panel.
+When in standby, input selectors are unavailable until the matrix is on again.
+A timeout or malformed response marks feedback unavailable; it never means off.
 
 ## Install
 

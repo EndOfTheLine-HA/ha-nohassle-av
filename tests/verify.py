@@ -14,12 +14,14 @@ from custom_components.monoprice.matrix import (
     normalize_host,
     route_command,
     parse_routes,
+    parse_status,
 )
 from custom_components.monoprice.media_player import MonopriceZone
 from custom_components.monoprice.number import MonopriceZoneNumber, NUMBERS
 from custom_components.monoprice.select import MatrixOutput
 from custom_components.monoprice.button import MatrixPower
 from homeassistant.exceptions import HomeAssistantError
+from custom_components.monoprice.binary_sensor import MatrixPowerStatus
 
 
 async def main():
@@ -28,6 +30,8 @@ async def main():
         for i, code in enumerate(("00", "01", "02", "03", "11", "12", "13", "14"))
     )
     assert parse_routes(payload + "@T 05 00 00 !") == {i: i for i in range(1, 9)}
+    assert parse_status("none\r\n") == {"power": False, "routes": {}}
+    assert parse_status(payload)["power"] is True
     for bad in (
         "",
         "<html>error</html>",
@@ -36,7 +40,7 @@ async def main():
         payload.replace("@T 00 00 !", "@T 00 FF !"),
     ):
         try:
-            parse_routes(bad)
+            parse_status(bad)
         except ValueError:
             pass
         else:
@@ -73,10 +77,13 @@ async def main():
         post=Mock(return_value=context), get=Mock(return_value=context)
     )
     client = MatrixClient(session, "example.invalid", 80)
-    assert await client.status() == {i: i for i in range(1, 9)}
+    assert await client.status() == {
+        "power": True,
+        "routes": {i: i for i in range(1, 9)},
+    }
     assert str(session.get.call_args.args[0]).endswith("/all_dat.get")
     client.coordinator = SimpleNamespace(
-        data={i: 1 for i in range(1, 9)},
+        data={"power": True, "routes": {i: 1 for i in range(1, 9)}},
         last_update_success=True,
         async_request_refresh=AsyncMock(),
         async_refresh=AsyncMock(),
@@ -103,11 +110,20 @@ async def main():
     entity.async_write_ha_state = Mock()
     await entity.async_select_option("Input 8")
     assert entity.current_option == "Input 1"  # A sent command is not device feedback.
-    client.coordinator.data[5] = 8  # Next poll observed the new route.
+    client.coordinator.data["routes"][5] = 8  # Next poll observed the new route.
     assert entity.current_option == "Input 8"
     client.coordinator.last_update_success = False
     assert not entity.available
     client.coordinator.last_update_success = True
+    power = MatrixPowerStatus(entry)
+    assert power.is_on is True
+    assert power.device_info["identifiers"] == entity.device_info["identifiers"]
+    client.coordinator.data = parse_status("none")
+    assert power.is_on is False and power.available and not entity.available
+    client.coordinator.last_update_success = False
+    assert not power.available  # A failed request must not masquerade as powered off.
+    client.coordinator.last_update_success = True
+    client.coordinator.data = {"power": True, "routes": {5: 8}}
     for on, expected in ((True, b"@T 0F 01 !"), (False, b"@T 0F 00 !")):
         button = MatrixPower(entry, on=on)
         assert button.device_info["identifiers"] == entity.device_info["identifiers"]
@@ -159,11 +175,13 @@ async def main():
     assert hass.config_entries.async_forward_entry_setups.call_args.args[1] == [
         "select",
         "button",
+        "binary_sensor",
     ]
     await async_unload_entry(hass, entry)
     assert hass.config_entries.async_unload_platforms.call_args.args[1] == [
         "select",
         "button",
+        "binary_sensor",
     ]
     # An existing config entry has no device_type. It must remain an amplifier.
     legacy = SimpleNamespace(

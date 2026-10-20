@@ -20,7 +20,7 @@ from .services import async_setup_services
 # Modified by EndOfTheLine-HA: add an independent HDMI matrix device type.
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.NUMBER]
-MATRIX_PLATFORMS = [Platform.SELECT, Platform.BUTTON]
+MATRIX_PLATFORMS = [Platform.SELECT, Platform.BUTTON, Platform.BINARY_SENSOR]
 
 _LOGGER = logging.getLogger(__name__)
 
