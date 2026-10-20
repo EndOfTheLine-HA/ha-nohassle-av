@@ -1,0 +1,14 @@
+{
+  "domain": "monoprice",
+  "name": "No Hassle AV",
+  "codeowners": ["@endoftheline818"],
+  "config_flow": true,
+  "dependencies": ["usb"],
+  "documentation": "https://github.com/EndOfTheLine-HA/ha-nohassle-av",
+  "integration_type": "hub",
+  "iot_class": "local_polling",
+  "loggers": ["pymonoprice"],
+  "requirements": ["pymonoprice==0.6.1"],
+  "issue_tracker": "https://github.com/EndOfTheLine-HA/ha-nohassle-av/issues",
+  "version": "0.1.0"
+}

@@ -1,0 +1,13 @@
+No Hassle AV for Home Assistant
+
+The amplifier implementation derives from Home Assistant Core's Monoprice
+integration, copyright its respective contributors, under Apache License 2.0.
+Upstream: https://github.com/home-assistant/core/tree/2026.9.4/homeassistant/components/monoprice
+Original manifest codeowners: @etsinko and @OnFreund.
+
+The starting point was the user's locally extended integration, including
+bass/treble/balance entities and cached zone state. EndOfTheLine-HA modified
+setup and lifecycle handling to add the HDMI matrix device choice. Amplifier
+entity identifiers and snapshot/restore service names are retained.
+Matrix support is implemented from the user's existing HTTP routing scripts.
+No affiliation with No Hassle AV, Monoprice, or Home Assistant is implied.
