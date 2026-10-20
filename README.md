@@ -41,6 +41,10 @@ not a confirmed power-off state. The existing **Power on** and **Power off** but
 remain functional. This issue concerns matrix power feedback, not amplifier
 power controls.
 
+We will be testing the matrix's physical **RS-232 interface soon** to look for
+and validate an actual power-status query. RS-232 power feedback has not yet
+been verified or implemented; this is an investigation plan, not a confirmed fix.
+
 ## Install
 
 1. In HACS, open **Custom repositories**.
