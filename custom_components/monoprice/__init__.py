@@ -20,6 +20,7 @@ from .services import async_setup_services
 # Modified by EndOfTheLine-HA: add an independent HDMI matrix device type.
 
 PLATFORMS = [Platform.MEDIA_PLAYER, Platform.NUMBER]
+MATRIX_PLATFORMS = [Platform.SELECT, Platform.BUTTON]
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MonopriceConfigEntry) ->
         entry.runtime_data = MatrixClient(
             async_get_clientsession(hass), entry.data["host"], entry.data["http_port"]
         )
-        await hass.config_entries.async_forward_entry_setups(entry, [Platform.SELECT])
+        await hass.config_entries.async_forward_entry_setups(entry, MATRIX_PLATFORMS)
         return True
     port = entry.data[CONF_PORT]
 
@@ -87,7 +88,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: MonopriceConfigEntry) ->
 async def async_unload_entry(hass: HomeAssistant, entry: MonopriceConfigEntry) -> bool:
     """Unload a config entry."""
     platforms = (
-        [Platform.SELECT] if entry.data.get("device_type") == "matrix" else PLATFORMS
+        MATRIX_PLATFORMS if entry.data.get("device_type") == "matrix" else PLATFORMS
     )
     unload_ok = await hass.config_entries.async_unload_platforms(entry, platforms)
     if not unload_ok:

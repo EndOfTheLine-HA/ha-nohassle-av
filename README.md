@@ -10,12 +10,14 @@ During setup, choose **Amplifier** or **HDMI Matrix**. Add it again if you own b
   No Hassle AV amplifier. Power, volume, mute, source, bass, treble, balance,
   and snapshot/restore. Up to three six-zone units use the existing address scheme.
 - **Matrix:** the HTTP `/video.set` protocol used by the audited No Hassle AV
-  eight-input/eight-output matrix. Eight output selectors with configurable input names.
+  eight-input/eight-output matrix. Eight output selectors with configurable input names,
+  plus **Power on** and **Power off** buttons on the same device.
   Other No Hassle AV models and protocols have not been verified.
 
 Matrix selection shows the **last command accepted over HTTP**, not confirmed
 hardware feedback. Changes made with a remote or another controller will not
-appear automatically. This version does not expose reboot or factory reset.
+appear automatically. Power buttons send explicit commands without assuming the
+current power state. This version does not expose reboot or factory reset.
 
 ## Install
 

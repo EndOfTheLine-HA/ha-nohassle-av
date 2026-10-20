@@ -17,6 +17,7 @@ from custom_components.monoprice.matrix import (
 from custom_components.monoprice.media_player import MonopriceZone
 from custom_components.monoprice.number import MonopriceZoneNumber, NUMBERS
 from custom_components.monoprice.select import MatrixOutput
+from custom_components.monoprice.button import MatrixPower
 from homeassistant.exceptions import HomeAssistantError
 
 
@@ -69,6 +70,29 @@ async def main():
     entity.async_write_ha_state = Mock()
     await entity.async_select_option("Input 8")
     assert entity.current_option == "Input 8"
+    for on, expected in ((True, b"@T 0F 01 !"), (False, b"@T 0F 00 !")):
+        button = MatrixPower(entry, on=on)
+        assert button.device_info["identifiers"] == entity.device_info["identifiers"]
+        assert button.unique_id == f"legacy-entry_matrix_power_{'on' if on else 'off'}"
+        await button.async_press()
+        assert session.post.call_args.kwargs["data"] == expected
+    assert entity.current_option == "Input 8"
+    response.status = 500
+    for on in (True, False):
+        try:
+            await MatrixPower(entry, on=on).async_press()
+        except HomeAssistantError:
+            pass
+        else:
+            raise AssertionError("Failed power command accepted")
+    response.status = 200
+    with patch.object(client, "_send", new=AsyncMock(side_effect=TimeoutError)):
+        try:
+            await MatrixPower(entry, on=True).async_press()
+        except HomeAssistantError:
+            pass
+        else:
+            raise AssertionError("Power timeout accepted")
     response.status = 500
     try:
         await entity.async_select_option("Input 1")
@@ -89,10 +113,14 @@ async def main():
     ):
         await async_setup_entry(hass, entry)
     assert hass.config_entries.async_forward_entry_setups.call_args.args[1] == [
-        "select"
+        "select",
+        "button",
     ]
     await async_unload_entry(hass, entry)
-    assert hass.config_entries.async_unload_platforms.call_args.args[1] == ["select"]
+    assert hass.config_entries.async_unload_platforms.call_args.args[1] == [
+        "select",
+        "button",
+    ]
     # An existing config entry has no device_type. It must remain an amplifier.
     legacy = SimpleNamespace(
         entry_id="legacy-entry",
@@ -146,7 +174,8 @@ async def main():
     data["input_2"] = data["input_1"]
     assert (await flow.async_step_matrix(data))["errors"]["base"] == "invalid_sources"
     print(
-        "PASS: all 64 routes, invalid inputs, HTTP failures, lifecycle isolation, setup choice, legacy amp IDs and EQ, duplicate amp prevention"
+        "PASS: all 64 routes, power buttons, HTTP failures/timeouts, device identity, "
+        "lifecycle isolation, setup choice, legacy amp IDs and EQ, duplicate amp prevention"
     )
 
 

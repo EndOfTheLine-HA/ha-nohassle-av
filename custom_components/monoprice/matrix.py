@@ -44,7 +44,14 @@ class MatrixClient:
         self.lock = asyncio.Lock()
 
     async def route(self, output: int, source: int):
-        command = route_command(output, source)
+        await self._send(route_command(output, source))
+
+    async def power(self, on: bool):
+        if type(on) is not bool:
+            raise ValueError("Power state must be a boolean")
+        await self._send(b"@T 0F 01 !" if on else b"@T 0F 00 !")
+
+    async def _send(self, command: bytes):
         async with self.lock:
             async with asyncio.timeout(5):
                 async with self.session.post(
