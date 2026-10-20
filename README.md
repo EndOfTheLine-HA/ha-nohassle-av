@@ -14,10 +14,14 @@ During setup, choose **Amplifier** or **HDMI Matrix**. Add it again if you own b
   plus **Power on** and **Power off** buttons on the same device.
   Other No Hassle AV models and protocols have not been verified.
 
-Matrix selection shows the **last command accepted over HTTP**, not confirmed
-hardware feedback. Changes made with a remote or another controller will not
-appear automatically. Power buttons send explicit commands without assuming the
+Matrix selection reads **device-reported routing** from `/all_dat.get` every
+15 seconds, including changes made by another controller. A status failure marks
+the selectors unavailable rather than showing an old command as current feedback.
+Power buttons send explicit commands without assuming the
 current power state. This version does not expose reboot or factory reset.
+The tested firmware does not include a power flag in its status response, so actual
+power-state monitoring is not yet supported. Network reachability is not treated
+as proof that the matrix is on.
 
 ## Install
 
@@ -48,7 +52,8 @@ Your `input_select` helpers, shell commands, and automations remain independent.
 Installing this integration does not remove, rename, or rewrite them. The new
 matrix selectors have new IDs in the `select` domain. Existing matrix dashboard
 cards and automations continue to use their old helpers until you deliberately
-switch them over. They do not automatically synchronize with the new selectors.
+switch them over. The new selectors read the matrix directly; the old helpers
+remain independent and are not rewritten.
 
 ## Development and validation
 

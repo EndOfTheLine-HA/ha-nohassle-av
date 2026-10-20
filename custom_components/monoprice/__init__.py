@@ -49,12 +49,18 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_setup_entry(hass: HomeAssistant, entry: MonopriceConfigEntry) -> bool:
     """Set up Monoprice 6-Zone Amplifier from a config entry."""
     if entry.data.get("device_type") == "matrix":
+        from .coordinator import MatrixCoordinator
         from .matrix import MatrixClient
         from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
         entry.runtime_data = MatrixClient(
             async_get_clientsession(hass), entry.data["host"], entry.data["http_port"]
         )
+        entry.runtime_data.coordinator = MatrixCoordinator(
+            hass, entry, entry.runtime_data
+        )
+        # Keep power controls available even when status feedback is temporarily offline.
+        await entry.runtime_data.coordinator.async_refresh()
         await hass.config_entries.async_forward_entry_setups(entry, MATRIX_PLATFORMS)
         return True
     port = entry.data[CONF_PORT]

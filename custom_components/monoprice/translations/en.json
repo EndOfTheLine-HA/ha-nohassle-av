@@ -2,16 +2,79 @@
   "title": "No Hassle AV",
   "config": {
     "step": {
-      "user": {"title": "Choose your No Hassle AV device", "menu_options": {"amp": "Amplifier", "matrix": "HDMI Matrix"}},
-      "amp": {"title": "Connect your amplifier", "description": "Enter its serial device or serial-over-IP address. Existing amplifier entries are reused automatically after installation.", "data": {"port": "Connection address", "source_1": "Input 1 name", "source_2": "Input 2 name", "source_3": "Input 3 name", "source_4": "Input 4 name", "source_5": "Input 5 name", "source_6": "Input 6 name"}},
-      "matrix": {"title": "Connect your HDMI matrix", "description": "For compatible 8×8 models using HTTP video.set. Setup does not switch outputs. Selectors show the last accepted command, not live hardware feedback.", "data": {"host": "IP address or hostname", "http_port": "HTTP port", "input_1": "Input 1 name", "input_2": "Input 2 name", "input_3": "Input 3 name", "input_4": "Input 4 name", "input_5": "Input 5 name", "input_6": "Input 6 name", "input_7": "Input 7 name", "input_8": "Input 8 name"}}
+      "user": {
+        "title": "Choose your No Hassle AV device",
+        "menu_options": {
+          "amp": "Amplifier",
+          "matrix": "HDMI Matrix"
+        }
+      },
+      "amp": {
+        "title": "Connect your amplifier",
+        "description": "Enter its serial device or serial-over-IP address. Existing amplifier entries are reused automatically after installation.",
+        "data": {
+          "port": "Connection address",
+          "source_1": "Input 1 name",
+          "source_2": "Input 2 name",
+          "source_3": "Input 3 name",
+          "source_4": "Input 4 name",
+          "source_5": "Input 5 name",
+          "source_6": "Input 6 name"
+        }
+      },
+      "matrix": {
+        "title": "Connect your HDMI matrix",
+        "description": "For compatible 8×8 models using HTTP video.set and all_dat.get. Setup does not switch outputs. Current routes are read from the device every 15 seconds. Actual power feedback is not available on the tested firmware.",
+        "data": {
+          "host": "IP address or hostname",
+          "http_port": "HTTP port",
+          "input_1": "Input 1 name",
+          "input_2": "Input 2 name",
+          "input_3": "Input 3 name",
+          "input_4": "Input 4 name",
+          "input_5": "Input 5 name",
+          "input_6": "Input 6 name",
+          "input_7": "Input 7 name",
+          "input_8": "Input 8 name"
+        }
+      }
     },
-    "error": {"cannot_connect": "Cannot connect to the amplifier.", "unknown": "Connection failed. Check the Home Assistant logs.", "invalid_sources": "Give each input a different, non-empty name.", "invalid_host": "Enter an IP address or hostname without http://, a port, or a path."},
-    "abort": {"already_configured": "This device is already configured."}
+    "error": {
+      "cannot_connect": "Cannot connect to the amplifier.",
+      "unknown": "Connection failed. Check the Home Assistant logs.",
+      "invalid_sources": "Give each input a different, non-empty name.",
+      "invalid_host": "Enter an IP address or hostname without http://, a port, or a path."
+    },
+    "abort": {
+      "already_configured": "This device is already configured."
+    }
   },
   "options": {
-    "step": {"init": {"title": "Amplifier input names", "data": {"source_1": "Input 1 name", "source_2": "Input 2 name", "source_3": "Input 3 name", "source_4": "Input 4 name", "source_5": "Input 5 name", "source_6": "Input 6 name"}}},
-    "abort": {"matrix_options": "Matrix settings are fixed at setup in this version. Output names can be changed in the entity settings."}
+    "step": {
+      "init": {
+        "title": "Amplifier input names",
+        "data": {
+          "source_1": "Input 1 name",
+          "source_2": "Input 2 name",
+          "source_3": "Input 3 name",
+          "source_4": "Input 4 name",
+          "source_5": "Input 5 name",
+          "source_6": "Input 6 name"
+        }
+      }
+    },
+    "abort": {
+      "matrix_options": "Matrix settings are fixed at setup in this version. Output names can be changed in the entity settings."
+    }
   },
-  "services": {"snapshot": {"name": "Save amplifier state", "description": "Save the selected amplifier zone state for later restoration."}, "restore": {"name": "Restore amplifier state", "description": "Restore the selected amplifier zone snapshot."}}
+  "services": {
+    "snapshot": {
+      "name": "Save amplifier state",
+      "description": "Save the selected amplifier zone state for later restoration."
+    },
+    "restore": {
+      "name": "Restore amplifier state",
+      "description": "Restore the selected amplifier zone snapshot."
+    }
+  }
 }

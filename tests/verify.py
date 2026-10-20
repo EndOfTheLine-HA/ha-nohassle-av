@@ -13,6 +13,7 @@ from custom_components.monoprice.matrix import (
     MatrixClient,
     normalize_host,
     route_command,
+    parse_routes,
 )
 from custom_components.monoprice.media_player import MonopriceZone
 from custom_components.monoprice.number import MonopriceZoneNumber, NUMBERS
@@ -22,6 +23,24 @@ from homeassistant.exceptions import HomeAssistantError
 
 
 async def main():
+    payload = "".join(
+        f"@T {code} {i:02X} !"
+        for i, code in enumerate(("00", "01", "02", "03", "11", "12", "13", "14"))
+    )
+    assert parse_routes(payload + "@T 05 00 00 !") == {i: i for i in range(1, 9)}
+    for bad in (
+        "",
+        "<html>error</html>",
+        payload.replace("@T 00 00 !", ""),
+        payload + "@T 00 00 !",
+        payload.replace("@T 00 00 !", "@T 00 FF !"),
+    ):
+        try:
+            parse_routes(bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Malformed routing status accepted")
     for output, code in enumerate(("00", "01", "02", "03", "11", "12", "13", "14"), 1):
         for source in range(1, 9):
             assert (
@@ -43,11 +62,25 @@ async def main():
         else:
             raise AssertionError("Invalid host accepted")
     assert normalize_host("EXAMPLE.invalid") == "example.invalid"
-    response = SimpleNamespace(status=200, read=AsyncMock(return_value=b"OK"))
+    response = SimpleNamespace(
+        status=200,
+        read=AsyncMock(return_value=b"OK"),
+        text=AsyncMock(return_value=payload),
+    )
     context = AsyncMock()
     context.__aenter__.return_value = response
-    session = SimpleNamespace(post=Mock(return_value=context))
+    session = SimpleNamespace(
+        post=Mock(return_value=context), get=Mock(return_value=context)
+    )
     client = MatrixClient(session, "example.invalid", 80)
+    assert await client.status() == {i: i for i in range(1, 9)}
+    assert str(session.get.call_args.args[0]).endswith("/all_dat.get")
+    client.coordinator = SimpleNamespace(
+        data={i: 1 for i in range(1, 9)},
+        last_update_success=True,
+        async_request_refresh=AsyncMock(),
+        async_refresh=AsyncMock(),
+    )
     await client.route(5, 8)
     assert session.post.call_args.kwargs["data"] == b"@T 11 07 !"
     assert session.post.call_args.kwargs["allow_redirects"] is False
@@ -69,7 +102,12 @@ async def main():
     entity = MatrixOutput(entry, 5)
     entity.async_write_ha_state = Mock()
     await entity.async_select_option("Input 8")
+    assert entity.current_option == "Input 1"  # A sent command is not device feedback.
+    client.coordinator.data[5] = 8  # Next poll observed the new route.
     assert entity.current_option == "Input 8"
+    client.coordinator.last_update_success = False
+    assert not entity.available
+    client.coordinator.last_update_success = True
     for on, expected in ((True, b"@T 0F 01 !"), (False, b"@T 0F 00 !")):
         button = MatrixPower(entry, on=on)
         assert button.device_info["identifiers"] == entity.device_info["identifiers"]
@@ -107,9 +145,15 @@ async def main():
             async_unload_platforms=AsyncMock(return_value=True),
         )
     )
-    with patch(
-        "homeassistant.helpers.aiohttp_client.async_get_clientsession",
-        return_value=session,
+    with (
+        patch(
+            "homeassistant.helpers.aiohttp_client.async_get_clientsession",
+            return_value=session,
+        ),
+        patch(
+            "custom_components.monoprice.coordinator.MatrixCoordinator",
+            return_value=client.coordinator,
+        ),
     ):
         await async_setup_entry(hass, entry)
     assert hass.config_entries.async_forward_entry_setups.call_args.args[1] == [

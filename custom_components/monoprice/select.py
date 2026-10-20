@@ -1,10 +1,10 @@
-"""One source selector per matrix output. State is the last accepted command."""
+"""Source selectors backed by the matrix's live routing feedback."""
 
 from aiohttp import ClientError
 from homeassistant.components.select import SelectEntity
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.restore_state import RestoreEntity
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 
@@ -13,13 +13,14 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([MatrixOutput(entry, output) for output in range(1, 9)])
 
 
-class MatrixOutput(SelectEntity, RestoreEntity):
+class MatrixOutput(CoordinatorEntity, SelectEntity):
     _attr_has_entity_name = True
     _attr_should_poll = False
     _attr_icon = "mdi:video-input-hdmi"
 
     def __init__(self, entry, output):
         self.client = entry.runtime_data
+        super().__init__(self.client.coordinator)
         self.output = output
         self._attr_name = f"Output {output}"
         self._attr_unique_id = f"{entry.entry_id}_matrix_output_{output}"
@@ -30,12 +31,12 @@ class MatrixOutput(SelectEntity, RestoreEntity):
             model="8×8 HDMI Matrix",
             name=entry.title,
         )
-        self._attr_extra_state_attributes = {"state_source": "last_command"}
+        self._attr_extra_state_attributes = {"state_source": "device"}
 
-    async def async_added_to_hass(self):
-        await super().async_added_to_hass()
-        if (last := await self.async_get_last_state()) and last.state in self.options:
-            self._attr_current_option = last.state
+    @property
+    def current_option(self):
+        source = (self.coordinator.data or {}).get(self.output)
+        return self.options[source - 1] if source is not None else None
 
     async def async_select_option(self, option):
         if option not in self.options:
@@ -44,5 +45,4 @@ class MatrixOutput(SelectEntity, RestoreEntity):
             await self.client.route(self.output, self.options.index(option) + 1)
         except (ClientError, OSError, TimeoutError) as err:
             raise HomeAssistantError("Matrix routing failed") from err
-        self._attr_current_option = option
-        self.async_write_ha_state()
+        await self.coordinator.async_request_refresh()

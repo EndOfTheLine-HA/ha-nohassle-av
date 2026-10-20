@@ -10,6 +10,25 @@ from yarl import URL
 OUTPUT_CODES = ("00", "01", "02", "03", "11", "12", "13", "14")
 
 
+def parse_routes(payload: str) -> dict[int, int]:
+    """Read routes by protocol output code, ignoring the accompanying EDID frames."""
+    routes = {}
+    for frame in payload.split("!"):
+        match = re.fullmatch(r"\s*@T\s+([0-9a-f]{2})\s+([0-9a-f]{2})\s*", frame, re.I)
+        if not match:
+            continue
+        code, value = (item.upper() for item in match.groups())
+        if code in OUTPUT_CODES:
+            source = int(value, 16) + 1
+            output = OUTPUT_CODES.index(code) + 1
+            if not 1 <= source <= 8 or output in routes:
+                raise ValueError("Invalid matrix routing status")
+            routes[output] = source
+    if len(routes) != 8:
+        raise ValueError("Incomplete matrix routing status")
+    return routes
+
+
 def normalize_host(host: str) -> str:
     host = host.strip().lower()
     try:
@@ -50,6 +69,18 @@ class MatrixClient:
         if type(on) is not bool:
             raise ValueError("Power state must be a boolean")
         await self._send(b"@T 0F 01 !" if on else b"@T 0F 00 !")
+
+    async def status(self):
+        async with self.lock:
+            async with asyncio.timeout(5):
+                async with self.session.get(
+                    self.url.with_path("/all_dat.get"),
+                    allow_redirects=False,
+                    headers={"Cache-Control": "no-cache"},
+                ) as response:
+                    if response.status != 200:
+                        raise OSError(f"Matrix status returned HTTP {response.status}")
+                    return parse_routes(await response.text())
 
     async def _send(self, command: bytes):
         async with self.lock:
