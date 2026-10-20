@@ -50,6 +50,10 @@ async def main():
     await client.route(5, 8)
     assert session.post.call_args.kwargs["data"] == b"@T 11 07 !"
     assert session.post.call_args.kwargs["allow_redirects"] is False
+    assert (
+        session.post.call_args.kwargs["headers"]["Content-Type"]
+        == "application/x-www-form-urlencoded"
+    )
     entry = SimpleNamespace(
         entry_id="legacy-entry",
         title="Matrix",

@@ -48,7 +48,10 @@ class MatrixClient:
         async with self.lock:
             async with asyncio.timeout(5):
                 async with self.session.post(
-                    self.url, data=command, allow_redirects=False
+                    self.url,
+                    data=command,
+                    allow_redirects=False,
+                    headers={"Content-Type": "application/x-www-form-urlencoded"},
                 ) as response:
                     if response.status != 200:
                         raise OSError(f"Matrix returned HTTP {response.status}")
