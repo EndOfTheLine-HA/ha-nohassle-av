@@ -72,6 +72,11 @@ class MatrixClient:
     async def route(self, output: int, source: int):
         await self._send(route_command(output, source))
 
+    async def route_all(self, source: int):
+        if type(source) is not int or not 1 <= source <= 8:
+            raise ValueError("Input must be an integer from 1 to 8")
+        await self._send(f"@T 04 {source - 1:02X} !".encode("ascii"))
+
     async def power(self, on: bool):
         if type(on) is not bool:
             raise ValueError("Power state must be a boolean")

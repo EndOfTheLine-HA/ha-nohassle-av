@@ -18,7 +18,7 @@ from custom_components.monoprice.matrix import (
 )
 from custom_components.monoprice.media_player import MonopriceZone
 from custom_components.monoprice.number import MonopriceZoneNumber, NUMBERS
-from custom_components.monoprice.select import MatrixOutput
+from custom_components.monoprice.select import MatrixOutput, MatrixAllOutputs
 from custom_components.monoprice.button import MatrixPower
 from homeassistant.exceptions import HomeAssistantError
 from custom_components.monoprice.binary_sensor import MatrixPowerStatus
@@ -116,6 +116,27 @@ async def main():
         runtime_data=client,
     )
     entity = MatrixOutput(entry, 5)
+    all_outputs = MatrixAllOutputs(entry)
+    assert all_outputs.unique_id == "legacy-entry_matrix_output_all"
+    assert all_outputs.device_info["identifiers"] == entity.device_info["identifiers"]
+    assert all_outputs.current_option == "Input 1"
+    for source in range(1, 9):
+        await all_outputs.async_select_option(f"Input {source}")
+        assert (
+            session.post.call_args.kwargs["data"]
+            == f"@T 04 {source - 1:02X} !".encode()
+        )
+    assert all_outputs.current_option == "Input 1"  # Commands do not invent feedback.
+    client.coordinator.data["routes"][5] = 2
+    assert all_outputs.current_option is None
+    client.coordinator.data["routes"][5] = 1
+    for invalid in (0, 9, True, "2"):
+        try:
+            await client.route_all(invalid)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("Invalid broadcast input accepted")
     entity.async_write_ha_state = Mock()
     await entity.async_select_option("Input 8")
     assert entity.current_option == "Input 1"  # A sent command is not device feedback.
@@ -143,6 +164,12 @@ async def main():
         assert session.post.call_args.kwargs["data"] == expected
     assert entity.current_option == "Input 8"
     response.status = 500
+    try:
+        await all_outputs.async_select_option("Input 2")
+    except HomeAssistantError:
+        pass
+    else:
+        raise AssertionError("Failed broadcast accepted")
     for on in (True, False):
         try:
             await MatrixPower(entry, on=on).async_press()
