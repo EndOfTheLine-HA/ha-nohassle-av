@@ -22,12 +22,24 @@ Matrix selection reads **device-reported routing** from `/all_dat.get` every
 the selectors unavailable rather than showing an old command as current feedback.
 Power buttons send explicit commands without assuming the
 current power state. This version does not expose reboot or factory reset.
-The firmware may return `none` while the matrix is ON. That response is not a
-power indicator. Actual power feedback remains unresolved; the Power sensor
-shows **unknown** rather than inferring on/off. Existing power buttons work normally.
 Routing reports update the selectors, and `none` retains the last device report.
 After startup, inputs remain unknown until the device supplies a complete report.
 A timeout or malformed response marks feedback unavailable.
+
+## Known bugs
+
+### Matrix Power sensor reports Unknown
+
+The matrix **Power** sensor does not currently report the actual on/standby state.
+This is a known bug, and we are working to resolve it by identifying and validating
+reliable power-state feedback. There is no confirmed fix yet.
+
+The firmware can return `none` even while the matrix is powered on, so that
+response cannot safely be interpreted as standby/off. The sensor therefore shows
+**Unknown** instead of guessing. **Unavailable** indicates a status-read failure,
+not a confirmed power-off state. The existing **Power on** and **Power off** buttons
+remain functional. This issue concerns matrix power feedback, not amplifier
+power controls.
 
 ## Install
 
