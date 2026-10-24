@@ -24,6 +24,19 @@ Tested with the No Hassle AV eight-input, eight-output matrix that uses the HTTP
 `/video.set` protocol. Other models and protocols have not been verified. Reboot
 and factory reset are not exposed.
 
+## How the matrix reports routing
+
+The matrix answers the status request with `none` almost every time, and sends its
+full routing report once after a route changes. Home Assistant therefore polls
+every 15 seconds and also polls a few times right after any command it sends. Two
+things follow from this:
+
+- After a Home Assistant restart the selectors show **Unknown** until the next
+  route change, because the matrix has nothing to report until then.
+- The matrix closes its connection after every reply. The integration retries a
+  request once when it hits a connection the matrix already closed, so a route
+  change no longer makes the matrix show as unavailable (fixed in 0.3.1).
+
 ## Known bug: matrix Power sensor reports Unknown
 
 The **Power** sensor does not yet report the actual on/standby state. The

@@ -44,7 +44,7 @@ class MatrixOutput(CoordinatorEntity, SelectEntity):
             await self.client.route(self.output, self.options.index(option) + 1)
         except (ClientError, OSError, TimeoutError) as err:
             raise HomeAssistantError("Matrix routing failed") from err
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_poll_for_report()
 
 
 class MatrixAllOutputs(MatrixOutput):
@@ -70,4 +70,4 @@ class MatrixAllOutputs(MatrixOutput):
             await self.client.route_all(self.options.index(option) + 1)
         except (ClientError, OSError, TimeoutError) as err:
             raise HomeAssistantError("Matrix all-output routing failed") from err
-        await self.coordinator.async_request_refresh()
+        await self.coordinator.async_poll_for_report()

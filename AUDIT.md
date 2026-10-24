@@ -53,6 +53,15 @@ supplies selector state; malformed, incomplete, oversized (over 64 KiB) or
 non-ASCII responses make feedback unavailable rather than assuming a command
 succeeded.
 
+The matrix closes the connection after every reply without saying so, and reports
+routing once per change (otherwise `none`). The client retries a request once when
+aiohttp reports a connection the matrix already closed (`ServerDisconnectedError`
+or `ClientOSError`) and never retries any other error. After a selector command the
+coordinator polls up to three times, within about 1.4 seconds, and stops at the
+first poll that carries a report or fails. A `none` reply keeps the previous routes
+but is not counted as a report. Tests run a real aiohttp session against a fake
+matrix that closes every connection.
+
 Power commands are explicit buttons. The firmware's `none` response is not
 treated as proof of standby, so the Power sensor remains unknown until reliable
 power-state feedback is established. Reboot and factory-reset commands are not

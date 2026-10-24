@@ -17,7 +17,7 @@ def test_metadata():
     assert manifest["domain"] == "nohassle_av"
     assert manifest["config_flow"] is True
     assert manifest["requirements"] == []  # the matrix speaks HTTP via HA's session
-    assert manifest["version"] == project["project"]["version"] == "0.3.0"
+    assert manifest["version"] == project["project"]["version"] == "0.3.1"
     assert hacs["name"] == "No Hassle AV"
 
 
