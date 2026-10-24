@@ -5,13 +5,19 @@ permissions:
 jobs:
   tests:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # The minimum supported release and the current one. pymonoprice is only
+        # needed so removing an old `monoprice` entry can load that integration.
+        homeassistant: ['2026.9.4', '2026.10.2']
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: '3.14'
-      - run: pip install homeassistant==2026.9.4 pymonoprice==0.6.1
-      - run: python tests/verify.py
+      - run: pip install homeassistant==${{ matrix.homeassistant }} pymonoprice==0.6.1 pytest pytest-asyncio ruff
+      - run: ruff check .
+      - run: pytest
   hassfest:
     runs-on: ubuntu-latest
     steps:
