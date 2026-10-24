@@ -3,10 +3,9 @@
 from aiohttp import ClientError
 from homeassistant.components.select import SelectEntity
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .entity import matrix_device_info
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -30,12 +29,7 @@ class MatrixOutput(CoordinatorEntity, SelectEntity):
         self._attr_name = f"Output {output}"
         self._attr_unique_id = f"{entry.entry_id}_matrix_output_{output}"
         self._attr_options = list(entry.data["input_names"])
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"matrix_{entry.entry_id}")},
-            manufacturer="No Hassle AV",
-            model="8×8 HDMI Matrix",
-            name=entry.title,
-        )
+        self._attr_device_info = matrix_device_info(entry)
         self._attr_extra_state_attributes = {"state_source": "device"}
 
     @property
@@ -59,7 +53,7 @@ class MatrixAllOutputs(MatrixOutput):
     def __init__(self, entry):
         super().__init__(entry, output=0)
         # Sorts after Output 8 in HA's device controls, before the power buttons.
-        self._attr_name = "Outputs — All"
+        self._attr_name = "Outputs: All"
         self._attr_unique_id = f"{entry.entry_id}_matrix_output_all"
 
     @property

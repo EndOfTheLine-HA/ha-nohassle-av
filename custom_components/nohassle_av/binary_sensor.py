@@ -4,10 +4,9 @@ from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
 )
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .entity import matrix_device_info
 
 
 async def async_setup_entry(hass, entry, async_add_entities):
@@ -22,12 +21,7 @@ class MatrixPowerStatus(CoordinatorEntity, BinarySensorEntity):
     def __init__(self, entry):
         super().__init__(entry.runtime_data.coordinator)
         self._attr_unique_id = f"{entry.entry_id}_matrix_power_status"
-        self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, f"matrix_{entry.entry_id}")},
-            manufacturer="No Hassle AV",
-            model="8×8 HDMI Matrix",
-            name=entry.title,
-        )
+        self._attr_device_info = matrix_device_info(entry)
 
     @property
     def is_on(self):

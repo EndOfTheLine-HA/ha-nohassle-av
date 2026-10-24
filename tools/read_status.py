@@ -7,7 +7,7 @@ from pathlib import Path
 from aiohttp import ClientSession
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from custom_components.monoprice.matrix import MatrixClient
+from custom_components.nohassle_av.matrix import MatrixClient
 
 
 async def main():

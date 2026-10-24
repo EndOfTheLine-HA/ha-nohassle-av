@@ -1,0 +1,45 @@
+{
+  "title": "No Hassle AV",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add your No Hassle AV matrix",
+        "description": "An HDMI matrix set up with an earlier version of this integration was found. Import it to keep its entities, history and area.",
+        "menu_options": {
+          "migrate": "Import the existing matrix",
+          "manual": "Set up a matrix by address"
+        }
+      },
+      "migrate": {
+        "title": "Choose the matrix to import",
+        "data": {
+          "legacy_entry_id": "Matrix"
+        }
+      },
+      "manual": {
+        "title": "Connect your HDMI matrix",
+        "description": "For compatible 8×8 models using HTTP video.set and all_dat.get. Setup does not switch outputs. Routing reports are checked every 15 seconds. Actual power feedback remains unknown on the tested firmware.",
+        "data": {
+          "host": "IP address or hostname",
+          "http_port": "HTTP port",
+          "input_1": "Input 1 name",
+          "input_2": "Input 2 name",
+          "input_3": "Input 3 name",
+          "input_4": "Input 4 name",
+          "input_5": "Input 5 name",
+          "input_6": "Input 6 name",
+          "input_7": "Input 7 name",
+          "input_8": "Input 8 name"
+        }
+      }
+    },
+    "error": {
+      "invalid_sources": "Give each input a different, non-empty name.",
+      "invalid_host": "Enter an IP address or hostname without a scheme, a port, or a path."
+    },
+    "abort": {
+      "already_configured": "This matrix is already set up in No Hassle AV. To import an older entry for it instead, remove this one first.",
+      "legacy_not_found": "No matrix from an earlier version was found to import."
+    }
+  }
+}

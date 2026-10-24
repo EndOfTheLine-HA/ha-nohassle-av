@@ -9,6 +9,22 @@ from yarl import URL
 # These are literal protocol codes, not sequential output indices.
 OUTPUT_CODES = ("00", "01", "02", "03", "11", "12", "13", "14")
 
+# Status replies are a few hundred bytes. Anything far larger is a fault, or a
+# different host answering on the configured address, and is never buffered.
+MAX_RESPONSE_BYTES = 64 * 1024
+
+
+async def read_limited(response) -> bytes:
+    """Read a response body, failing once it passes MAX_RESPONSE_BYTES."""
+    chunks = []
+    total = 0
+    async for chunk in response.content.iter_chunked(8192):
+        total += len(chunk)
+        if total > MAX_RESPONSE_BYTES:
+            raise OSError("Matrix response is larger than expected")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
 
 def parse_routes(payload: str) -> dict[int, int]:
     """Read routes by protocol output code, ignoring the accompanying EDID frames."""
@@ -92,7 +108,10 @@ class MatrixClient:
                 ) as response:
                     if response.status != 200:
                         raise OSError(f"Matrix status returned HTTP {response.status}")
-                    return parse_status(await response.text())
+                    body = await read_limited(response)
+                    # Strict: a corrupted byte fails the poll (UnicodeDecodeError is a
+                    # ValueError) instead of being replaced and silently ignored.
+                    return parse_status(body.decode("ascii"))
 
     async def _send(self, command: bytes):
         async with self.lock:
@@ -105,4 +124,4 @@ class MatrixClient:
                 ) as response:
                     if response.status != 200:
                         raise OSError(f"Matrix returned HTTP {response.status}")
-                    await response.read()
+                    await read_limited(response)

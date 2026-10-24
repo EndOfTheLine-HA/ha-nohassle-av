@@ -1,5 +1,5 @@
 Add-Type -AssemblyName System.Drawing
-$outDir = Join-Path $PSScriptRoot '..\custom_components\monoprice\brand'
+$outDir = Join-Path $PSScriptRoot '..\custom_components\nohassle_av\brand'
 New-Item -ItemType Directory -Path $outDir -Force | Out-Null
 foreach ($size in @(256,512)) {
   $bitmap = [Drawing.Bitmap]::new($size,$size)
