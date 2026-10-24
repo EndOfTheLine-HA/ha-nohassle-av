@@ -7,7 +7,6 @@ Home Assistant Core's Monoprice integration, copyright its respective
 contributors, under Apache License 2.0
 (https://github.com/home-assistant/core/tree/2026.9.4/homeassistant/components/monoprice;
 original manifest codeowners: @etsinko and @OnFreund). That code was removed
-from this repository in 0.3.0 and is maintained separately in
-ha-monoprice-tone-controls.
+from this repository in 0.3.0 and is maintained separately in ha-nohassle-amp.
 
 No affiliation with No Hassle AV, Monoprice, or Home Assistant is implied.

@@ -16,17 +16,17 @@ and entity IDs carried over. The HACS default catalog does not accept
 integrations that override a core integration, so 0.3.0 splits the work:
 
 - The HDMI matrix moves to the `nohassle_av` domain (this repository).
-- The amplifier returns to Home Assistant's built-in integration, which already
-  uses the same entry format and unique IDs, so nothing about it migrates.
-- Bass, treble and balance, which core does not offer yet, live temporarily in
-  the separate `ha-monoprice-tone-controls` repository, pending an upstream
-  contribution to core.
+- The amplifier, with its bass, treble and balance controls, moves to the
+  separate `ha-nohassle-amp` repository (domain `nohassle_amp`). It imports an
+  existing amplifier entry, so zones and tone controls keep their entity IDs.
+  The temporary `ha-monoprice-tone-controls` repository bridged the gap and is
+  retired.
 
 ## Matrix migration
 
 A matrix entry from 0.2.x is a `monoprice` entry with `device_type: matrix`.
-The import flow (started by the tone-controls repository, or by the user from
-the No Hassle AV setup menu) creates a `nohassle_av` entry marked with the old
+The import flow (started by the user from the No Hassle AV setup menu, or
+earlier by the now retired tone-controls repository) creates a `nohassle_av` entry marked with the old
 entry's ID. Before any platform loads, its setup:
 
 1. Unloads the old entry if it is loaded (entities can only change integration
