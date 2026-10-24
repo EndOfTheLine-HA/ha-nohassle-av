@@ -5,7 +5,8 @@ for each output, send one input to every output, and switch the matrix on or off
 
 > **Upgrading from 0.2.x?** Read [Upgrading from 0.2.x](#upgrading-from-02x)
 > first. From 0.3.0 this integration is the HDMI matrix only, under the
-> `nohassle_av` domain. Amplifier support moved out (see below).
+> `nohassle_av` domain. The amplifier is now its own integration,
+> [No Hassle AV Amplifier](https://github.com/EndOfTheLine-HA/ha-nohassle-amp).
 
 ## What you get
 
@@ -68,34 +69,34 @@ not accept integrations that override a core integration. From 0.3.0:
 - **The matrix** lives here, in the `nohassle_av` domain. It is moved
   automatically, keeping its entity IDs, history, names, area and disabled
   entities.
-- **The amplifier** is handled by Home Assistant's built-in **Monoprice 6-Zone
-  Amplifier** integration again. Your existing amplifier entry and zone entities
-  are reused as they are.
-- **Bass, treble and balance** are not part of Home Assistant's built-in
-  integration yet. To keep them, install the temporary
-  [Monoprice tone controls](https://github.com/EndOfTheLine-HA/ha-monoprice-tone-controls)
-  repository, which also keeps your existing tone-control entities as they are.
-  A pull request to add tone controls to Home Assistant itself is planned; once
-  it ships, that repository is no longer needed.
+- **The amplifier**, with its bass, treble and balance controls, is now the
+  separate **No Hassle AV Amplifier** integration,
+  [ha-nohassle-amp](https://github.com/EndOfTheLine-HA/ha-nohassle-amp). It
+  imports your existing amplifier and keeps every zone, tone control, name,
+  area and the history. See its README for the details.
 
 **Steps:**
 
 1. Make a full Home Assistant backup.
-2. In HACS, update **No Hassle AV** to 0.3.0. If `custom_components/monoprice`
-   is still present afterwards, remove it.
-3. If you want bass, treble and balance, add and install the
-   [Monoprice tone controls](https://github.com/EndOfTheLine-HA/ha-monoprice-tone-controls)
-   repository now.
+2. In HACS, update **No Hassle AV** to 0.3.1 or newer. If
+   `custom_components/monoprice` is still present afterwards, remove it.
+3. If you have an amplifier, add and install
+   [No Hassle AV Amplifier](https://github.com/EndOfTheLine-HA/ha-nohassle-amp)
+   in HACS the same way.
 4. Restart Home Assistant.
-5. **If you installed the tone-controls repository,** your matrix is imported
-   automatically. **Otherwise,** open **Add integration > No Hassle AV** and
-   choose **Import the existing matrix**.
-6. Check that your matrix outputs and buttons still have their old entity IDs.
+5. Open **Add integration > No Hassle AV** and choose **Import the existing
+   matrix**. If you have an amplifier, open **Add integration > No Hassle AV
+   Amplifier** and choose **Import the existing amplifier**.
+6. Check that your matrix outputs and buttons, and your zones and tone controls,
+   still have their old entity IDs.
 
-Between steps 2 and 4, entities may briefly show as unavailable or "no longer
-provided". **Do not delete them;** they come back once the step above completes.
-If the old matrix entry cannot be removed automatically, the log says so and it
-can be deleted from **Settings > Devices & services** after the import.
+Between steps 2 and 5, entities may briefly show as unavailable or "no longer
+provided". **Do not delete them;** they come back once the import completes.
+If an old entry cannot be removed automatically, the log says so and it can be
+deleted from **Settings > Devices & services** after the import.
+
+If you installed the temporary ha-monoprice-tone-controls repository, it is no
+longer needed once the amplifier is imported: uninstall it in HACS afterwards.
 
 ## Development and validation
 
