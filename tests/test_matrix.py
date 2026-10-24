@@ -135,6 +135,7 @@ def wired():
         data={"power": True, "routes": {i: 1 for i in range(1, 9)}},
         last_update_success=True,
         async_request_refresh=AsyncMock(),
+        async_poll_for_report=AsyncMock(),
         async_refresh=AsyncMock(),
     )
     return session, client, _entry(client)
@@ -167,6 +168,13 @@ async def test_output_selects_and_all_outputs(wired):
     assert entity.current_option == "Input 8"
     client.coordinator.last_update_success = False
     assert not entity.available
+
+
+async def test_selecting_an_input_waits_for_the_matrix_to_report(wired):
+    session, client, entry = wired
+    await MatrixOutput(entry, 3).async_select_option("Input 4")
+    await MatrixAllOutputs(entry).async_select_option("Input 2")
+    assert client.coordinator.async_poll_for_report.await_count == 2
 
 
 async def test_power_entities(wired):

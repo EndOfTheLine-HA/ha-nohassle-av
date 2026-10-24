@@ -4,10 +4,16 @@ import asyncio
 import ipaddress
 import re
 
+from aiohttp import ClientOSError, ServerDisconnectedError
 from yarl import URL
 
 # These are literal protocol codes, not sequential output indices.
 OUTPUT_CODES = ("00", "01", "02", "03", "11", "12", "13", "14")
+
+# The matrix closes the connection after every reply but does not say so, so a
+# pooled connection is usually dead by the next request. aiohttp then raises one of
+# these before anything was sent, and a fresh connection works.
+CLOSED_CONNECTION_ERRORS = (ServerDisconnectedError, ClientOSError)
 
 # Status replies are a few hundred bytes. Anything far larger is a fault, or a
 # different host answering on the configured address, and is never buffered.
@@ -99,7 +105,7 @@ class MatrixClient:
         await self._send(b"@T 0F 01 !" if on else b"@T 0F 00 !")
 
     async def status(self):
-        async with self.lock:
+        async def fetch():
             async with asyncio.timeout(5):
                 async with self.session.get(
                     self.url.with_path("/all_dat.get"),
@@ -108,13 +114,23 @@ class MatrixClient:
                 ) as response:
                     if response.status != 200:
                         raise OSError(f"Matrix status returned HTTP {response.status}")
-                    body = await read_limited(response)
-                    # Strict: a corrupted byte fails the poll (UnicodeDecodeError is a
-                    # ValueError) instead of being replaced and silently ignored.
-                    return parse_status(body.decode("ascii"))
+                    return await read_limited(response)
+
+        async with self.lock:
+            body = await self._retry_closed_connection(fetch)
+        # Strict: a corrupted byte fails the poll (UnicodeDecodeError is a
+        # ValueError) instead of being replaced and silently ignored.
+        return parse_status(body.decode("ascii"))
+
+    @staticmethod
+    async def _retry_closed_connection(request):
+        try:
+            return await request()
+        except CLOSED_CONNECTION_ERRORS:
+            return await request()
 
     async def _send(self, command: bytes):
-        async with self.lock:
+        async def post():
             async with asyncio.timeout(5):
                 async with self.session.post(
                     self.url,
@@ -125,3 +141,6 @@ class MatrixClient:
                     if response.status != 200:
                         raise OSError(f"Matrix returned HTTP {response.status}")
                     await read_limited(response)
+
+        async with self.lock:
+            await self._retry_closed_connection(post)
