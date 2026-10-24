@@ -59,7 +59,7 @@ class MatrixAllOutputs(MatrixOutput):
     def __init__(self, entry):
         super().__init__(entry, output=0)
         # Sorts after Output 8 in HA's device controls, before the power buttons.
-        self._attr_name = "Outputs — All"
+        self._attr_name = "Outputs: All"
         self._attr_unique_id = f"{entry.entry_id}_matrix_output_all"
 
     @property

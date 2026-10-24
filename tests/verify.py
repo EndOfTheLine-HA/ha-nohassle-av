@@ -110,6 +110,15 @@ async def main():
             assert "larger than expected" in str(err)
         else:
             raise AssertionError("Oversized matrix response accepted")
+    # A full set of valid frames plus one corrupted byte must fail the poll,
+    # not be decoded leniently and reported healthy.
+    body["data"] = payload.encode("ascii") + b"\xff"
+    try:
+        await client.status()
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Corrupted matrix response accepted")
     body["data"] = payload.encode("ascii")
     client.coordinator = SimpleNamespace(
         data={"power": True, "routes": {i: 1 for i in range(1, 9)}},

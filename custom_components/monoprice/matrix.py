@@ -109,7 +109,9 @@ class MatrixClient:
                     if response.status != 200:
                         raise OSError(f"Matrix status returned HTTP {response.status}")
                     body = await read_limited(response)
-                    return parse_status(body.decode("ascii", errors="replace"))
+                    # Strict: a corrupted byte fails the poll (UnicodeDecodeError is a
+                    # ValueError) instead of being replaced and silently ignored.
+                    return parse_status(body.decode("ascii"))
 
     async def _send(self, command: bytes):
         async with self.lock:

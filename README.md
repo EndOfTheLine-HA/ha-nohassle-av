@@ -12,7 +12,7 @@ During setup, choose **Amplifier** or **HDMI Matrix**. Add it again if you own b
 - **Matrix:** the HTTP `/video.set` protocol used by the audited No Hassle AV
   eight-input/eight-output matrix. Eight output selectors with configurable input names,
   plus **Power on** and **Power off** buttons on the same device.
-  **Outputs — All**, after Output 8, sends the chosen input to all eight outputs
+  **Outputs: All**, after Output 8, sends the chosen input to all eight outputs
   with one command. It shows a source only when all eight reported routes agree;
   differing or incomplete routes show unknown. You can still choose an input.
   Other No Hassle AV models and protocols have not been verified.
