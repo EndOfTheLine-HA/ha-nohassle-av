@@ -10,6 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from custom_components.monoprice import async_setup_entry, async_unload_entry
 from custom_components.monoprice.config_flow import MonoPriceConfigFlow
 from custom_components.monoprice.matrix import (
+    MAX_RESPONSE_BYTES,
     MatrixClient,
     normalize_host,
     route_command,
@@ -75,10 +76,18 @@ async def main():
         else:
             raise AssertionError("Invalid host accepted")
     assert normalize_host("EXAMPLE.invalid") == "example.invalid"
+    body = {"data": payload.encode("ascii")}
+
+    def iter_chunked(size):
+        async def chunks():
+            data = body["data"]
+            for start in range(0, len(data), size):
+                yield data[start : start + size]
+
+        return chunks()
+
     response = SimpleNamespace(
-        status=200,
-        read=AsyncMock(return_value=b"OK"),
-        text=AsyncMock(return_value=payload),
+        status=200, content=SimpleNamespace(iter_chunked=iter_chunked)
     )
     context = AsyncMock()
     context.__aenter__.return_value = response
@@ -91,6 +100,17 @@ async def main():
         "routes": {i: i for i in range(1, 9)},
     }
     assert str(session.get.call_args.args[0]).endswith("/all_dat.get")
+    # An oversized reply fails like an unreachable device instead of being
+    # buffered into Home Assistant's memory.
+    body["data"] = payload.encode("ascii") + b" " * (MAX_RESPONSE_BYTES + 1)
+    for call in (client.status, lambda: client.route(1, 1)):
+        try:
+            await call()
+        except OSError as err:
+            assert "larger than expected" in str(err)
+        else:
+            raise AssertionError("Oversized matrix response accepted")
+    body["data"] = payload.encode("ascii")
     client.coordinator = SimpleNamespace(
         data={"power": True, "routes": {i: 1 for i in range(1, 9)}},
         last_update_success=True,
