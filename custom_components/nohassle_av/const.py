@@ -2,18 +2,12 @@
 
 DOMAIN = "nohassle_av"
 
-# Matrix entries created before the rename live in this domain, as entries with
-# data["device_type"] == "matrix". They are moved here by migration.py.
-LEGACY_DOMAIN = "monoprice"
-LEGACY_DEVICE_TYPE = "matrix"
-
 CONF_HOST = "host"
 CONF_HTTP_PORT = "http_port"
 CONF_INPUT_NAMES = "input_names"
-# Set only on an entry created by the import flow; cleared once its entities,
-# device and legacy entry have been moved.
-CONF_MIGRATED_FROM = "migrated_from"
-CONF_LEGACY_ENTRY_ID = "legacy_entry_id"
+# Written by the 0.3.x import and removed once it finished. 0.4.0 no longer imports
+# anything; it only warns if an entry still carries the marker.
+CONF_IMPORT_MARKER = "migrated_from"
 
 DEFAULT_HTTP_PORT = 80
 INPUT_COUNT = 8

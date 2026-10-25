@@ -3,9 +3,9 @@
 Control a No Hassle AV 8×8 HDMI matrix from Home Assistant: choose the input
 for each output, send one input to every output, and switch the matrix on or off.
 
-> **Upgrading from 0.2.x?** Read [Upgrading from 0.2.x](#upgrading-from-02x)
-> first. From 0.3.0 this integration is the HDMI matrix only, under the
-> `nohassle_av` domain. The amplifier is now its own integration,
+> **Upgrading from 0.2.x or 0.3.x?** Read [Upgrading](#upgrading) first. This
+> integration is the HDMI matrix only, under the `nohassle_av` domain. The
+> amplifier is its own integration,
 > [No Hassle AV Amplifier](https://github.com/EndOfTheLine-HA/ha-nohassle-amp).
 
 ## What you get
@@ -38,14 +38,32 @@ things follow from this:
   request once when it hits a connection the matrix already closed, so a route
   change no longer makes the matrix show as unavailable (fixed in 0.3.1).
 
-## Known bug: matrix Power sensor reports Unknown
+## Power
 
-The **Power** sensor does not yet report the actual on/standby state. The
-firmware can return `none` while the matrix is on, so that response cannot
-safely be read as standby. The sensor therefore shows **Unknown** instead of
-guessing; **Unavailable** means a status read failed, not that the matrix is
-off. The **Power on** and **Power off** buttons work. Testing the matrix's
-RS-232 port for a real power-status query is planned; nothing is confirmed yet.
+The **Power on** and **Power off** buttons send an explicit command. No reliable
+power feedback was found over HTTP: on the tested unit the status page read `none`
+while the matrix was on and while it was off (checked on 2026-10-24 by switching
+power off and on from Home Assistant). The **Power** sensor therefore stays
+**Unknown** by design, and **Unavailable** means a status read failed, not that
+the matrix is off. Only HTTP is used; the matrix's RS-232 port was not tested.
+
+Measured on the tested unit, so treat these as observations from one unit:
+
+- After either button, the matrix answers the next status request with something
+  that is not a routing report.
+- Power on also takes the matrix's web server down for 8 to 45 seconds. It still
+  answers ping.
+
+For 60 seconds after the matrix accepts a power command, a failed status read is
+treated as expected: the selectors and the Power sensor keep the last known data
+and nothing is logged above debug level. This applies only if the matrix answered
+the poll before. After the 60 seconds, a failed read makes them unavailable again.
+A power command that times out does not open this window, even if the matrix
+received it. Before 0.4.0, every press made the selectors and the Power sensor
+unavailable for about 15 seconds and logged an error.
+
+In one test the routes read differently after power was switched off and on
+again, so check your outputs after you power the matrix on.
 
 ## Install
 
@@ -59,44 +77,36 @@ RS-232 port for a real power-status query is planned; nothing is confirmed yet.
 Rename the output entities to match your rooms. Home Assistant **2026.9.4 or
 newer** is required.
 
-## Upgrading from 0.2.x
+## Upgrading
 
-Versions before 0.3.0 shipped as `custom_components/monoprice`, which replaced
-Home Assistant's built-in Monoprice integration and handled both the amplifier
-and the matrix. That made it ineligible for the HACS default catalog, which does
-not accept integrations that override a core integration. From 0.3.0:
+**From 0.3.x:** update in HACS and restart Home Assistant. If the import to 0.3.x
+finished, entity IDs, names and history stay as they are. Check first that the
+matrix and its entities work. 0.4.0 cannot finish an import that was interrupted;
+if the log says an import may not have finished, install 0.3.2, restart, then
+update again.
 
-- **The matrix** lives here, in the `nohassle_av` domain. It is moved
-  automatically, keeping its entity IDs, history, names, area and disabled
-  entities.
-- **The amplifier**, with its bass, treble and balance controls, is now the
-  separate **No Hassle AV Amplifier** integration,
-  [ha-nohassle-amp](https://github.com/EndOfTheLine-HA/ha-nohassle-amp). It
-  imports your existing amplifier and keeps every zone, tone control, name,
-  area and the history. See its README for the details.
-
-**Steps:**
+**From 0.2.x or earlier:** those versions shipped as `custom_components/monoprice`
+and replaced Home Assistant's built-in Monoprice integration, which the HACS
+default catalog does not accept. Versions 0.3.0 to 0.3.2 moved the matrix to the
+`nohassle_av` domain and could import the old entry. 0.4.0 removes that import, so
+this integration no longer touches another integration's entities or config
+entries. To keep your entity IDs and history:
 
 1. Make a full Home Assistant backup.
-2. In HACS, update **No Hassle AV** to 0.3.1 or newer. If
-   `custom_components/monoprice` is still present afterwards, remove it.
-3. If you have an amplifier, add and install
-   [No Hassle AV Amplifier](https://github.com/EndOfTheLine-HA/ha-nohassle-amp)
-   in HACS the same way.
-4. Restart Home Assistant.
-5. Open **Add integration > No Hassle AV** and choose **Import the existing
-   matrix**. If you have an amplifier, open **Add integration > No Hassle AV
-   Amplifier** and choose **Import the existing amplifier**.
-6. Check that your matrix outputs and buttons, and your zones and tone controls,
-   still have their old entity IDs.
+2. In HACS, open **No Hassle AV**, choose **Redownload** and pick **0.3.2**.
+3. Restart Home Assistant, then open **Add integration > No Hassle AV** and
+   choose **Import the existing matrix**.
+4. Check that the outputs and buttons still have their old entity IDs, then
+   update to 0.4.0.
 
-Between steps 2 and 5, entities may briefly show as unavailable or "no longer
-provided". **Do not delete them;** they come back once the import completes.
-If an old entry cannot be removed automatically, the log says so and it can be
-deleted from **Settings > Devices & services** after the import.
+If you would rather start clean, remove the old Monoprice entry and add the matrix
+by address. The entity IDs will be new.
 
-If you installed the temporary ha-monoprice-tone-controls repository, it is no
-longer needed once the amplifier is imported: uninstall it in HACS afterwards.
+The amplifier, with its bass, treble and balance controls, is the separate
+[No Hassle AV Amplifier](https://github.com/EndOfTheLine-HA/ha-nohassle-amp)
+integration. Its README covers its own setup. The temporary
+ha-monoprice-tone-controls repository is retired; uninstall it in HACS if you
+installed it.
 
 ## Development and validation
 

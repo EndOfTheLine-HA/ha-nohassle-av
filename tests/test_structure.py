@@ -17,7 +17,7 @@ def test_metadata():
     assert manifest["domain"] == "nohassle_av"
     assert manifest["config_flow"] is True
     assert manifest["requirements"] == []  # the matrix speaks HTTP via HA's session
-    assert manifest["version"] == project["project"]["version"] == "0.3.2"
+    assert manifest["version"] == project["project"]["version"] == "0.4.0"
     assert hacs["name"] == "No Hassle AV"
 
 
@@ -40,3 +40,12 @@ def test_no_em_dashes_in_user_facing_text():
     files += list(PACKAGE.glob("*.py"))
     for path in files:
         assert "\u2014" not in path.read_text(encoding="utf-8"), path.name
+
+
+def test_nothing_touches_another_integration():
+    """Setup, flows and entities stay inside this domain, importing no other."""
+    for path in PACKAGE.glob("*.py"):
+        text = path.read_text(encoding="utf-8").lower()
+        assert "monoprice" not in text, path.name
+        assert "legacy" not in text, path.name
+    assert not (PACKAGE / "migration.py").exists()
