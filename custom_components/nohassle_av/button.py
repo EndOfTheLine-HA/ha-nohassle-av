@@ -28,4 +28,9 @@ class MatrixPower(ButtonEntity):
             await self.client.power(self.on)
         except (ClientError, OSError, TimeoutError) as err:
             raise HomeAssistantError("Matrix power command failed") from err
-        await self.client.coordinator.async_request_refresh()
+        # The matrix has accepted the command: its next status reply may be odd and a
+        # power on restarts its web server, so the refresh below must not read a
+        # failure there as the matrix going offline.
+        coordinator = self.client.coordinator
+        coordinator.note_power_command()
+        await coordinator.async_request_refresh()

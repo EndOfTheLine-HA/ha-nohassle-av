@@ -137,6 +137,7 @@ def wired():
         async_request_refresh=AsyncMock(),
         async_poll_for_report=AsyncMock(),
         async_refresh=AsyncMock(),
+        note_power_command=Mock(),
     )
     return session, client, _entry(client)
 

@@ -22,28 +22,21 @@ integrations that override a core integration, so 0.3.0 splits the work:
   The temporary `ha-monoprice-tone-controls` repository bridged the gap and is
   retired.
 
-## Matrix migration
+## Matrix migration, removed in 0.4.0
 
-A matrix entry from 0.2.x is a `monoprice` entry with `device_type: matrix`.
-The import flow (started by the user from the No Hassle AV setup menu, or
-earlier by the now retired tone-controls repository) creates a `nohassle_av` entry marked with the old
-entry's ID. Before any platform loads, its setup:
+Versions 0.3.0 to 0.3.2 could import a matrix set up under the old `monoprice`
+domain, moving its device and entities into `nohassle_av` and removing the old
+config entry. 0.4.0 removes that code. Nothing in this repository now reads, moves
+or removes another integration's config entries, devices or entities, and
+`tests/test_structure.py` fails if the package mentions the old domain again.
 
-1. Unloads the old entry if it is loaded (entities can only change integration
-   while not loaded).
-2. Moves each old entity to `nohassle_av` with
-   `entity_registry.async_update_entity_platform`, rewriting the entry-ID prefix
-   of its unique ID. Entity IDs, history, custom names and disabled or hidden
-   flags are kept.
-3. Moves the old device to the new entry with a single `async_update_device`
-   call (`new_config_entry_id`), keeping its device ID, area and user-given
-   name. Entities move first: moving a device to another config entry removes
-   any of its entities still registered to the old one.
-4. Removes the old entry. If that fails, the move still stands and a warning
-   asks the user to delete the empty entry.
-
-The migration is idempotent and covered by tests on real Home Assistant
-registries, including mutation checks for each step's ordering and API use.
+A matrix whose import finished is unaffected: its entities keep the unique IDs
+they have had since 0.3.0, which `tests/test_setup.py` pins. The 0.3.x import wrote
+a `migrated_from` marker on the new entry and removed it when it finished. 0.4.0
+cannot resume an interrupted import, so setup logs a warning if an entry still
+carries the marker and tells the user to install 0.3.2, restart, and update again
+(the marker also appears in diagnostics, which redact only the host). A user still
+on 0.2.x installs 0.3.2 first, imports the matrix with it, and then updates.
 
 ## Matrix protocol
 
@@ -62,10 +55,26 @@ first poll that carries a report or fails. A `none` reply keeps the previous rou
 but is not counted as a report. Tests run a real aiohttp session against a fake
 matrix that closes every connection.
 
-Power commands are explicit buttons. The firmware's `none` response is not
-treated as proof of standby, so the Power sensor remains unknown until reliable
-power-state feedback is established. Reboot and factory-reset commands are not
+Power commands are explicit buttons. Reboot and factory-reset commands are not
 exposed.
+
+No reliable power-state feedback was found over HTTP. On 2026-10-24 the status page
+was read every 4 seconds while the matrix was switched off and on from Home
+Assistant (three times each). Apart from the restart windows below, it returned
+`none` throughout, including while the matrix was off, so the Power sensor stays
+unknown. This is one unit, and the RS-232 port was not tested.
+
+The same run showed two things a power command does to the status reads. The first
+read after any power command did not parse as a routing report. After a power on,
+the web server also stopped answering for 8 to 45 seconds (timeouts, then refused
+connections, while the host still answered ping) and the first read after it
+returned a full routing report. The coordinator therefore keeps the previous data
+when a read fails within 60 seconds of an accepted power command, provided the
+matrix was reachable on the poll before. That window is opened only after the
+matrix accepts the command, so a refused or unreachable matrix still shows as
+unavailable. A command that times out opens no window even if the matrix received
+it, because a timeout cannot be told apart from a command that never arrived. `tests/test_power_settle.py` covers each condition, including a
+Home Assistant level test of the entities' state through a failing refresh.
 
 ## Safety and validation
 

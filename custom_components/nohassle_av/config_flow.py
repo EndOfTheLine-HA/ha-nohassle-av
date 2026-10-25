@@ -5,24 +5,17 @@ from __future__ import annotations
 from typing import Any, override
 
 import voluptuous as vol
-from homeassistant.config_entries import ConfigEntry, ConfigFlow, ConfigFlowResult
-from homeassistant.helpers.selector import (
-    SelectOptionDict,
-    SelectSelector,
-    SelectSelectorConfig,
-)
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
 
 from .const import (
     CONF_HOST,
     CONF_HTTP_PORT,
     CONF_INPUT_NAMES,
-    CONF_LEGACY_ENTRY_ID,
     DEFAULT_HTTP_PORT,
     DOMAIN,
     INPUT_COUNT,
 )
 from .matrix import normalize_host
-from .migration import legacy_entry_data, legacy_matrix_entries
 
 
 def matrix_unique_id(host: str, port: int) -> str:
@@ -30,7 +23,7 @@ def matrix_unique_id(host: str, port: int) -> str:
 
 
 class NoHassleAVConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Add an HDMI matrix, or import one set up before the rename."""
+    """Add an HDMI matrix by address."""
 
     VERSION = 1
 
@@ -38,67 +31,6 @@ class NoHassleAVConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        if legacy_matrix_entries(self.hass):
-            return self.async_show_menu(
-                step_id="user", menu_options=["migrate", "manual"]
-            )
-        return await self.async_step_manual()
-
-    async def async_step_migrate(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Import a matrix that was set up under the old `monoprice` domain."""
-        legacy = legacy_matrix_entries(self.hass)
-        if not legacy:
-            return self.async_abort(reason="legacy_not_found")
-        if len(legacy) == 1:
-            return await self._async_import(legacy[0])
-        if user_input is not None:
-            chosen = self.hass.config_entries.async_get_entry(
-                user_input[CONF_LEGACY_ENTRY_ID]
-            )
-            if chosen is None:
-                return self.async_abort(reason="legacy_not_found")
-            return await self._async_import(chosen)
-        return self.async_show_form(
-            step_id="migrate",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_LEGACY_ENTRY_ID): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                SelectOptionDict(
-                                    value=entry.entry_id, label=entry.title
-                                )
-                                for entry in legacy
-                            ]
-                        )
-                    )
-                }
-            ),
-        )
-
-    async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
-        """Started by the tone-controls stopgap when it meets a matrix entry."""
-        legacy = self.hass.config_entries.async_get_entry(
-            import_data.get(CONF_LEGACY_ENTRY_ID, "")
-        )
-        if legacy is None or legacy not in legacy_matrix_entries(self.hass):
-            return self.async_abort(reason="legacy_not_found")
-        return await self._async_import(legacy)
-
-    async def _async_import(self, legacy: ConfigEntry) -> ConfigFlowResult:
-        data = legacy_entry_data(legacy)
-        await self.async_set_unique_id(
-            matrix_unique_id(data[CONF_HOST], data[CONF_HTTP_PORT])
-        )
-        self._abort_if_unique_id_configured()
-        return self.async_create_entry(title=legacy.title, data=data)
-
-    async def async_step_manual(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Set up a matrix by address."""
         errors: dict[str, str] = {}
         if user_input is not None:
             try:
@@ -137,5 +69,5 @@ class NoHassleAVConfigFlow(ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(
-            step_id="manual", data_schema=vol.Schema(schema), errors=errors
+            step_id="user", data_schema=vol.Schema(schema), errors=errors
         )
