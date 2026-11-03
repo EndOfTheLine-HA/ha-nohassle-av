@@ -67,12 +67,17 @@ again, so check your outputs after you power the matrix on.
 
 ## Install
 
-1. In HACS, open **Custom repositories** and add
-   `https://github.com/EndOfTheLine-HA/ha-nohassle-av` as an **Integration**.
-2. Download **No Hassle AV**, then restart Home Assistant.
+No Hassle AV is in the default HACS catalog.
+
+1. Open HACS and search for **No Hassle AV**.
+2. Select it, choose **Download**, then restart Home Assistant.
 3. Open **Settings > Devices & services > Add integration > No Hassle AV**.
 4. Enter the matrix's hostname or IP address, its HTTP port and eight distinct
    input names. Setup saves the address without switching any output.
+
+If it does not appear in HACS yet (a new default listing can take several hours to
+show up), add `https://github.com/EndOfTheLine-HA/ha-nohassle-av` as a custom
+repository of type **Integration** and download it from there.
 
 Rename the output entities to match your rooms. Home Assistant **2026.9.4 or
 newer** is required.
