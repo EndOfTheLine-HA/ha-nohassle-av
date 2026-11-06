@@ -1,10 +1,12 @@
-"""The matrix closes the connection after every reply, and answers with its routing
-report only once per change. These tests use a real aiohttp session against a fake
-matrix that behaves the same way, because a mocked session cannot show either."""
+"""The matrix closes the connection after every reply, refuses new connections for a
+moment after a command, and answers with its routing report only once per change.
+Where it matters, these tests use a real aiohttp session against a fake matrix that
+behaves the same way, because a mocked session cannot show it."""
 
 from __future__ import annotations
 
 import asyncio
+import sys
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -15,7 +17,7 @@ from custom_components.nohassle_av.coordinator import (
     REPORT_POLL_DELAYS,
     MatrixCoordinator,
 )
-from custom_components.nohassle_av.matrix import MatrixClient
+from custom_components.nohassle_av.matrix import REFUSED_RETRY_DELAYS, MatrixClient
 
 from .conftest import STATUS_PAYLOAD
 
@@ -117,6 +119,120 @@ async def test_a_second_disconnect_is_reported_not_retried_forever():
     with pytest.raises(aiohttp.ServerDisconnectedError):
         await MatrixClient(session, "example.invalid", 80).route(1, 1)
     assert session.calls == 2
+
+
+def _refused(os_error=None):
+    """What aiohttp raises when the matrix refuses the connection itself."""
+    return aiohttp.ClientConnectorError(
+        SimpleNamespace(host="example.invalid", port=80, ssl=True, is_ssl=False),
+        os_error or ConnectionRefusedError(111, "Connection refused"),
+    )
+
+
+async def _without_waiting(call):
+    delays = []
+
+    async def fake_sleep(delay):
+        delays.append(delay)
+
+    with patch("custom_components.nohassle_av.matrix.asyncio.sleep", fake_sleep):
+        result = await call()
+    return result, delays
+
+
+@pytest.mark.parametrize("method", ["status", "route"])
+async def test_a_refused_connection_is_retried_after_a_pause(method):
+    """Measured 2026-11-06: the matrix refuses connections for up to about a second
+    after a command, so a poll or a second command right after one is refused."""
+    session = _Session([_refused(), _refused(), _refused()])
+    client = MatrixClient(session, "example.invalid", 80)
+    call = client.status if method == "status" else lambda: client.route(1, 2)
+    _, delays = await _without_waiting(call)
+    assert session.calls == 4
+    assert delays == list(REFUSED_RETRY_DELAYS[:3])
+
+
+async def test_refused_retries_are_bounded():
+    session = _Session([_refused()] * 10)
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await _without_waiting(MatrixClient(session, "example.invalid", 80).status)
+    assert session.calls == len(REFUSED_RETRY_DELAYS) + 1
+    assert sum(REFUSED_RETRY_DELAYS) <= 2
+
+
+async def test_an_unreachable_matrix_is_not_waited_for():
+    """Only a refusal is waited out: an offline matrix keeps the single retry."""
+    unreachable = _refused(OSError(113, "No route to host"))
+    session = _Session([unreachable, unreachable, unreachable])
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await _without_waiting(MatrixClient(session, "example.invalid", 80).status)
+    assert session.calls == 2
+
+
+async def test_a_closed_connection_then_a_refusal_still_succeeds():
+    session = _Session([DISCONNECT, _refused()])
+    status, _ = await _without_waiting(
+        MatrixClient(session, "example.invalid", 80).status
+    )
+    assert len(status["routes"]) == 8
+    assert session.calls == 3
+
+
+@pytest.fixture
+async def refusing_matrix():
+    """Like the matrix: after a command it stops accepting connections briefly."""
+    requests = []
+    state = {}
+
+    async def reopen():
+        await asyncio.sleep(0.6)
+        state["server"] = await asyncio.start_server(handle, "127.0.0.1", port)
+
+    async def handle(reader, writer):
+        head = await reader.readuntil(b"\r\n\r\n")
+        length = 0
+        for line in head.split(b"\r\n"):
+            if line.lower().startswith(b"content-length:"):
+                length = int(line.split(b":")[1])
+        if length:
+            await reader.readexactly(length)
+        method = head.split(b" ")[0].decode()
+        requests.append(method)
+        body = b"" if method == "POST" else STATUS_PAYLOAD.encode()
+        writer.write(
+            b"HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n"
+            b"Content-Length:%d\r\n\r\n%s" % (len(body), body)
+        )
+        await writer.drain()
+        writer.close()
+        if method == "POST":
+            state["server"].close()
+            state["reopen"] = asyncio.ensure_future(reopen())
+
+    state["server"] = await asyncio.start_server(handle, "127.0.0.1", 0)
+    port = state["server"].sockets[0].getsockname()[1]
+    yield port, requests
+    if "reopen" in state:
+        await state["reopen"]
+    state["server"].close()
+    await state["server"].wait_closed()
+
+
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Windows retries a refused connection itself, which hides the refusal",
+)
+async def test_a_poll_right_after_a_command_waits_out_the_refusal(refusing_matrix):
+    port, requests = refusing_matrix
+    async with aiohttp.ClientSession() as session:
+        client = MatrixClient(session, "127.0.0.1", port)
+        await client.route(8, 2)
+        started = asyncio.get_running_loop().time()
+        status = await client.status()
+        waited = asyncio.get_running_loop().time() - started
+    assert len(status["routes"]) == 8
+    assert requests == ["POST", "GET"]
+    assert 0.5 <= waited <= sum(REFUSED_RETRY_DELAYS) + 0.5
 
 
 async def test_other_errors_are_not_retried():

@@ -15,6 +15,11 @@ OUTPUT_CODES = ("00", "01", "02", "03", "11", "12", "13", "14")
 # these before anything was sent, and a fresh connection works.
 CLOSED_CONNECTION_ERRORS = (ServerDisconnectedError, ClientOSError)
 
+# After accepting a command the matrix refuses new connections for up to about a
+# second (measured on the tested unit, 2026-11-06). A refused connection never
+# carried the request, so waiting and trying again cannot send a command twice.
+REFUSED_RETRY_DELAYS = (0.25, 0.25, 0.5, 0.5)
+
 # Status replies are a few hundred bytes. Anything far larger is a fault, or a
 # different host answering on the configured address, and is never buffered.
 MAX_RESPONSE_BYTES = 64 * 1024
@@ -124,10 +129,21 @@ class MatrixClient:
 
     @staticmethod
     async def _retry_closed_connection(request):
-        try:
-            return await request()
-        except CLOSED_CONNECTION_ERRORS:
-            return await request()
+        refused_delays = iter(REFUSED_RETRY_DELAYS)
+        retried_closed = False
+        while True:
+            try:
+                return await request()
+            except CLOSED_CONNECTION_ERRORS as err:
+                if isinstance(getattr(err, "os_error", None), ConnectionRefusedError):
+                    delay = next(refused_delays, None)
+                    if delay is None:
+                        raise
+                    await asyncio.sleep(delay)
+                elif retried_closed:
+                    raise
+                else:
+                    retried_closed = True
 
     async def _send(self, command: bytes):
         async def post():

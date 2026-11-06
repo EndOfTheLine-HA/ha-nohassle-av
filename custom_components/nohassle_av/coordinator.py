@@ -21,6 +21,10 @@ REPORT_POLL_DELAYS = (0.0, 0.4, 1.0)
 # the previous data instead of marking every entity unavailable.
 POWER_SETTLE_SECONDS = 60.0
 
+# A routing command makes the matrix refuse connections for up to about a second
+# (measured 2026-11-06). The client waits that out, and this covers a longer refusal.
+ROUTE_SETTLE_SECONDS = 5.0
+
 
 class MatrixCoordinator(DataUpdateCoordinator):
     def __init__(self, hass, entry, client):
@@ -41,6 +45,13 @@ class MatrixCoordinator(DataUpdateCoordinator):
     def note_power_command(self):
         """Call after the matrix accepted a power command."""
         self.settling_until = time.monotonic() + POWER_SETTLE_SECONDS
+
+    def note_route_command(self):
+        """Call after the matrix accepted a routing command."""
+        # Never shortens a power window that is still open.
+        self.settling_until = max(
+            self.settling_until, time.monotonic() + ROUTE_SETTLE_SECONDS
+        )
 
     async def _async_update_data(self):
         try:
@@ -66,8 +77,9 @@ class MatrixCoordinator(DataUpdateCoordinator):
     async def async_poll_for_report(self):
         """After a command, poll briefly until the matrix reports the new routes.
 
-        Gives up at the first failed poll (the regular poll recovers) and after a
-        bounded wait, since a command that changes nothing produces no report.
+        Gives up at the first poll that fails outside the settling window (the
+        regular poll recovers) and after a bounded wait, since a command that
+        changes nothing produces no report.
         """
         for delay in REPORT_POLL_DELAYS:
             await asyncio.sleep(delay)

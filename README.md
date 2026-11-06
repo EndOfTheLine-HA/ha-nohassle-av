@@ -18,7 +18,8 @@ for each output, send one input to every output, and switch the matrix on or off
 - **Power on** and **Power off** buttons that send explicit commands without
   assuming the current power state.
 - A status failure marks the selectors unavailable rather than showing an old
-  command as current feedback. Replies are size-capped and strictly decoded, so
+  command as current feedback, except in the few seconds after a command (see
+  below). Replies are size-capped and strictly decoded, so
   a corrupted or unexpected response fails the poll instead of being trusted.
 
 Tested with the No Hassle AV eight-input, eight-output matrix that uses the HTTP
@@ -28,15 +29,25 @@ and factory reset are not exposed.
 ## How the matrix reports routing
 
 The matrix answers the status request with `none` almost every time, and sends its
-full routing report once after a route changes. Home Assistant therefore polls
-every 15 seconds and also polls a few times right after any command it sends. Two
-things follow from this:
+full routing report once after a route changes, and once after its own web page
+is opened. Home Assistant therefore polls every 15 seconds and also polls a few
+times right after any command it sends. Some things follow from this:
 
 - After a Home Assistant restart the selectors show **Unknown** until the next
-  route change, because the matrix has nothing to report until then.
+  route change, or until someone opens the matrix's web page.
+- The report goes to whichever client asks first. If the matrix's web page is
+  open, it can take the report and Home Assistant keeps showing the old route
+  until the next change.
 - The matrix closes its connection after every reply. The integration retries a
-  request once when it hits a connection the matrix already closed, so a route
-  change no longer makes the matrix show as unavailable (fixed in 0.3.1).
+  request once when it hits a connection the matrix already closed.
+- For up to about a second after it accepts a command, the matrix refuses new
+  connections (measured on the tested unit). The integration waits that out, for
+  up to 1.5 seconds, before it reports a failure. For 5 seconds after a routing
+  command, a status read that still fails keeps the last routes instead of making
+  the selectors unavailable. Before this fix, a status read right after a route
+  change was refused, every selector went unavailable for about 15 seconds, and
+  Home Assistant skipped any command sent to them in that time. Windows retries a
+  refused connection by itself, which hides this when testing from a Windows PC.
 
 ## Power
 
@@ -51,8 +62,9 @@ Measured on the tested unit, so treat these as observations from one unit:
 
 - After either button, the matrix answers the next status request with something
   that is not a routing report.
-- Power on also takes the matrix's web server down for 8 to 45 seconds. It still
-  answers ping.
+- Power on also takes the matrix's web server down for 8 to 45 seconds. In the
+  first tests it still answered ping; in a later one it stopped answering ping
+  for about 11 seconds as well.
 
 For 60 seconds after the matrix accepts a power command, a failed status read is
 treated as expected: the selectors and the Power sensor keep the last known data
