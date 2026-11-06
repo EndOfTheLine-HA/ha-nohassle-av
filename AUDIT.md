@@ -47,9 +47,27 @@ non-ASCII responses make feedback unavailable rather than assuming a command
 succeeded.
 
 The matrix closes the connection after every reply without saying so, and reports
-routing once per change (otherwise `none`). The client retries a request once when
-aiohttp reports a connection the matrix already closed (`ServerDisconnectedError`
-or `ClientOSError`) and never retries any other error. After a selector command the
+routing once per change (otherwise `none`). A plain request for its web page also
+makes the next status read return a full report, once. The client retries a request
+once when aiohttp reports a connection the matrix already closed
+(`ServerDisconnectedError` or `ClientOSError`) and never retries any other error.
+
+On 2026-11-06 the matrix was found to refuse new connections for up to about a
+second after it accepts a command. The integration's poll right after a route
+change, and its immediate retry, were both refused within a few milliseconds, so
+every selector went unavailable until the next regular poll and Home Assistant
+skipped commands sent in that time. This was shown with the integration's own
+client running in the Home Assistant container. The same client on Windows did not
+fail, because Windows retries a refused connection itself. The client now waits
+out a refused connection (`ConnectionRefusedError` only) for up to 1.5 seconds in
+total. A refused connection never carried the request, so this cannot send a
+command twice. An unreachable matrix keeps the single retry, so polls do not stall.
+For 5 seconds after an accepted routing command the coordinator treats a failed
+status read like the power settling window below. That window never shortens a
+power window that is still open. `tests/test_connection.py` runs a real aiohttp
+session against a fake matrix that refuses connections after each command (on Linux
+only, since Windows hides the refusal), and `tests/test_route_settle.py` covers the
+window and the entity states. After a selector command the
 coordinator polls up to three times, within about 1.4 seconds, and stops at the
 first poll that carries a report or fails. A `none` reply keeps the previous routes
 but is not counted as a report. Tests run a real aiohttp session against a fake
@@ -67,7 +85,8 @@ unknown. This is one unit, and the RS-232 port was not tested.
 The same run showed two things a power command does to the status reads. The first
 read after any power command did not parse as a routing report. After a power on,
 the web server also stopped answering for 8 to 45 seconds (timeouts, then refused
-connections, while the host still answered ping) and the first read after it
+connections, while the host still answered ping; in a later test on 2026-11-05 ping
+stopped for about 11 seconds as well) and the first read after it
 returned a full routing report. The coordinator therefore keeps the previous data
 when a read fails within 60 seconds of an accepted power command, provided the
 matrix was reachable on the poll before. That window is opened only after the
